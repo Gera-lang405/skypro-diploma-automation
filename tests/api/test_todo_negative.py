@@ -1,13 +1,11 @@
 """
 API-тест-кейсы (негативные): Todo List API (JSONPlaceholder).
 
-JSONPlaceholder — мок-сервис: он не валидирует тела запросов и всегда
-отвечает "успехом" на POST/PATCH/DELETE, даже для мусорных данных. Поэтому
-негативные проверки здесь ограничены тем, что сервис реально проверяет
-(несуществующий id при GET/DELETE через отдельный путь) и тем, что можно
-проверить в структуре ответа (сервис не подставляет отсутствующее
-обязательное поле "title" сам). Поведение подтверждено вручную перед
-написанием тестов (см. README).
+JSONPlaceholder — учебный мок-сервис: тела запросов он не валидирует.
+Поэтому негативные проверки построены на том, что сервис реально
+проверяет: несуществующий id, id неверного формата и неподдерживаемый
+метод (POST на адрес конкретной задачи). Каждый статус-код подтверждён
+живым запросом перед написанием тестов (см. README).
 
 Число негативных тест-кейсов (3) не превышает число позитивных (5) —
 требование диплома.
@@ -17,7 +15,7 @@ import requests
 import allure
 import pytest
 
-from config import TODO_API_BASE_URL
+from config import TODO_API_BASE_URL, random_todo_title
 
 
 @pytest.mark.api
@@ -48,22 +46,13 @@ def test_get_todo_with_invalid_id_format_returns_404(
 
 @pytest.mark.api
 @allure.story("Негативные сценарии")
-@allure.title("POST без обязательного поля title не возвращает title в ответе")
-def test_create_todo_without_title_has_no_title_in_response(
-    api_session: requests.Session,
-) -> None:
-    """
-    Создание задачи без обязательного поля title: сервис не выдаёт ошибку
-    (мок принимает любое тело), но и не подставляет title сам — в ответе
-    поля "title" быть не должно. Это фиксирует реальное поведение сервиса
-    и защищает от регрессии, если в будущем это изменится.
-    """
-    with allure.step("Отправить POST /todos без поля title"):
+@allure.title("POST на адрес конкретной задачи (неподдерживаемый метод) возвращает 404")
+def test_post_to_single_todo_is_not_supported(api_session: requests.Session) -> None:
+    """POST на /todos/{id} сервис не поддерживает: ожидается 404, а не 200/201."""
+    with allure.step("Отправить POST /todos/1 с телом новой задачи"):
         response = api_session.post(
-            f"{TODO_API_BASE_URL}/todos", json={"completed": False, "userId": 1}
+            f"{TODO_API_BASE_URL}/todos/1", json={"title": random_todo_title()}
         )
 
-    with allure.step("Проверить статус-код 201 и отсутствие поля title в ответе"):
-        assert response.status_code == 201
-        created = response.json()
-        assert "title" not in created
+    with allure.step("Проверить статус-код 404"):
+        assert response.status_code == 404

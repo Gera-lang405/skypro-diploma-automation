@@ -1,48 +1,80 @@
 """
-UI-тест-кейсы: поиск и просмотр книги на chitai-gorod.ru.
+UI-тест-кейсы (позитивные): поиск книги и просмотр карточки товара на chitai-gorod.ru.
 
 Сайт доступен без логина, поэтому тесты работают с публичным каталогом:
-поиск по названию -> список результатов -> открытие карточки товара.
+поиск -> страница результатов /search -> карточка товара /product/.
 
 Селекторы подтверждены вручную на живом сайте перед написанием тестов
-(см. README): поле поиска — input[name="phrase"] (не имеет
-предсказуемого текста, только это стабильное имя), карточки товаров в
-выдаче — ссылки вида a[href*="/product/"].
+(см. README):
+- поле поиска — input[name="phrase"];
+- карточки товаров в выдаче — ссылки a[href*="/product/"] внутри блока
+  .app-products-list. Просто a[href*="/product/"] брать нельзя: такие же
+  ссылки есть на главной странице и в скрытом выпадающем списке подсказок
+  поиска, и тест мог бы «найти» товары без выполнения поиска;
+- заголовок выдачи — h1.search-title__head;
+- название товара в карточке — h1.product-detail-page__title;
+- открытый список подсказок поиска — .app-search--opened, пункты
+  подсказок — .search-suggests-modal__suggests-list .suggests-list__item.
 
-Важно: сайт постоянно шлёт фоновые запросы (аналитика, рекомендации),
-поэтому состояние "networkidle" никогда не наступает и вызывает ложные
-таймауты (подтверждено живым прогоном). Вместо ожидания "тишины в сети"
-тесты явно ждут появления нужного элемента через wait_for_selector —
-это то, что реально имеет значение для проверки.
+Сайт постоянно шлёт фоновые запросы (аналитика, рекомендации), поэтому
+состояние "networkidle" не наступает. Вместо этого используются явные
+ожидания: wait_for_url, wait_for_selector и expect из Playwright.
 """
-from playwright.sync_api import Page
+from playwright.sync_api import Page, expect
 
 import allure
 import pytest
 
-from config import SEARCH_QUERY
+from config import AUTHOR_QUERY, SEARCH_QUERY
 
 SEARCH_INPUT_SELECTOR = 'input[name="phrase"]'
-PRODUCT_CARD_SELECTOR = 'a[href*="/product/"]'
+PRODUCT_CARD_SELECTOR = '.app-products-list a[href*="/product/"]'
+RESULTS_TITLE_SELECTOR = "h1.search-title__head"
+PRODUCT_TITLE_SELECTOR = "h1.product-detail-page__title"
+SEARCH_SUGGESTIONS_OPENED_SELECTOR = ".app-search--opened"
+SEARCH_SUGGESTION_ITEM_SELECTOR = ".search-suggests-modal__suggests-list .suggests-list__item"
+APP_MOUNTED_SCRIPT = "() => Boolean(document.querySelector('#__nuxt')?.__vue_app__)"
+WAIT_TIMEOUT_MS = 15_000
 
 
 @allure.step("Открыть главную страницу и выполнить поиск по запросу '{query}'")
 def _search(page: Page, query: str) -> None:
     page.goto("/")
+    # Дождаться, пока клиентское приложение смонтируется: иначе введённый
+    # текст может сброситься при гидратации страницы.
+    page.wait_for_function(APP_MOUNTED_SCRIPT, timeout=WAIT_TIMEOUT_MS)
     search_box = page.locator(SEARCH_INPUT_SELECTOR)
     search_box.fill(query)
+    expect(search_box).to_have_value(query)
+    # Как пользователь: дождаться подсказок по введённому запросу и только
+    # потом нажать Enter. Так запрос точно попал в состояние страницы, а
+    # поздний ответ подсказок не откроет список поверх выдачи.
+    expect(page.locator(SEARCH_SUGGESTION_ITEM_SELECTOR).first).to_be_visible(
+        timeout=WAIT_TIMEOUT_MS
+    )
     search_box.press("Enter")
+    page.wait_for_url(
+        "**/search**", wait_until="domcontentloaded", timeout=WAIT_TIMEOUT_MS
+    )
+    # Закрыть список подсказок, чтобы он не перехватывал клики по выдаче.
+    page.keyboard.press("Escape")
+    expect(page.locator(SEARCH_SUGGESTIONS_OPENED_SELECTOR)).to_have_count(
+        0, timeout=WAIT_TIMEOUT_MS
+    )
+
+
+@allure.step("Дождаться карточек товаров в выдаче")
+def _wait_for_results(page: Page) -> None:
+    page.wait_for_selector(PRODUCT_CARD_SELECTOR, timeout=WAIT_TIMEOUT_MS)
 
 
 @pytest.mark.ui
 @allure.story("Поиск книг")
-@allure.title("Поиск по существующему запросу возвращает результаты")
+@allure.title("Поиск по названию книги возвращает результаты")
 def test_search_returns_results(page: Page) -> None:
-    """Поиск по существующему запросу должен вернуть хотя бы один результат."""
+    """Поиск по названию книги должен вернуть хотя бы один товар."""
     _search(page, SEARCH_QUERY)
-
-    with allure.step("Дождаться карточек товаров в выдаче"):
-        page.wait_for_selector(PRODUCT_CARD_SELECTOR, timeout=15_000)
+    _wait_for_results(page)
 
     with allure.step("Убедиться, что найден хотя бы один товар"):
         results = page.locator(PRODUCT_CARD_SELECTOR)
@@ -52,16 +84,30 @@ def test_search_returns_results(page: Page) -> None:
 @pytest.mark.ui
 @allure.story("Поиск книг")
 @allure.title("Первый результат поиска отображается на странице")
-def test_search_results_contain_query_relevance(page: Page) -> None:
+def test_first_search_result_is_visible(page: Page) -> None:
     """Первый результат поиска должен быть видимой ссылкой на карточку товара."""
     _search(page, SEARCH_QUERY)
-
-    with allure.step("Дождаться карточек товаров в выдаче"):
-        page.wait_for_selector(PRODUCT_CARD_SELECTOR, timeout=15_000)
+    _wait_for_results(page)
 
     with allure.step("Проверить видимость первого результата"):
         first_result = page.locator(PRODUCT_CARD_SELECTOR).first
-        assert first_result.is_visible()
+        expect(first_result).to_be_visible()
+
+
+@pytest.mark.ui
+@allure.story("Поиск книг")
+@allure.title("Поиск по фамилии автора возвращает результаты")
+def test_search_by_author_returns_results(page: Page) -> None:
+    """Поиск по фамилии автора должен показать запрос в заголовке выдачи и найти товары."""
+    _search(page, AUTHOR_QUERY)
+    _wait_for_results(page)
+
+    with allure.step("Проверить, что заголовок выдачи содержит фамилию автора"):
+        heading = page.locator(RESULTS_TITLE_SELECTOR)
+        expect(heading).to_contain_text(AUTHOR_QUERY, ignore_case=True)
+
+    with allure.step("Убедиться, что найден хотя бы один товар"):
+        assert page.locator(PRODUCT_CARD_SELECTOR).count() > 0
 
 
 @pytest.mark.ui
@@ -70,50 +116,33 @@ def test_search_results_contain_query_relevance(page: Page) -> None:
 def test_open_product_card(page: Page) -> None:
     """Клик по первому товару из поиска должен открыть карточку товара."""
     _search(page, SEARCH_QUERY)
-
-    with allure.step("Дождаться карточек товаров в выдаче"):
-        page.wait_for_selector(PRODUCT_CARD_SELECTOR, timeout=15_000)
+    _wait_for_results(page)
 
     with allure.step("Кликнуть по первому товару и дождаться перехода"):
-        first_product = page.locator(PRODUCT_CARD_SELECTOR).first
-        first_product.click()
-        page.wait_for_url("**/product/**", timeout=15_000)
+        page.locator(PRODUCT_CARD_SELECTOR).first.click()
+        page.wait_for_url(
+            "**/product/**", wait_until="domcontentloaded", timeout=WAIT_TIMEOUT_MS
+        )
 
     with allure.step("Проверить, что открылась страница карточки товара"):
         assert "/product/" in page.url
 
 
 @pytest.mark.ui
-@allure.story("Граничные случаи поиска")
-@allure.title("Пустой поисковый запрос не приводит к ошибке сайта")
-def test_empty_search_query_does_not_crash(page: Page) -> None:
-    """Пустой поисковый запрос не должен приводить к ошибке — сайт остаётся рабочим."""
-    _search(page, "")
+@allure.story("Просмотр карточки товара")
+@allure.title("Карточка товара отображает название книги")
+def test_product_card_shows_title(page: Page) -> None:
+    """В открытой карточке товара должно отображаться непустое название книги."""
+    _search(page, SEARCH_QUERY)
+    _wait_for_results(page)
 
-    with allure.step("Дождаться загрузки DOM после пустого поиска"):
-        page.wait_for_load_state("domcontentloaded")
+    with allure.step("Открыть карточку первого товара из выдачи"):
+        page.locator(PRODUCT_CARD_SELECTOR).first.click()
+        page.wait_for_url(
+            "**/product/**", wait_until="domcontentloaded", timeout=WAIT_TIMEOUT_MS
+        )
 
-    with allure.step("Проверить, что страница осталась рабочей (есть заголовок)"):
-        assert page.title() != ""
-
-
-@pytest.mark.ui
-@allure.story("Граничные случаи поиска")
-@allure.title("Заведомо несуществующий запрос обрабатывается без ошибки")
-def test_nonexistent_query_does_not_error(page: Page) -> None:
-    """
-    Заведомо бессмысленный запрос не должен приводить к ошибке страницы.
-
-    Подтверждено вручную: сайт не показывает пустое состояние для такого
-    запроса, а откатывается на список рекомендаций — это тоже валидный
-    результат, поэтому проверяется отсутствие ошибки и наличие заголовка,
-    а не конкретное количество товаров.
-    """
-    _search(page, "ъъъфываолдж12345несуществующийтовар")
-
-    with allure.step("Дождаться перехода на страницу результатов поиска"):
-        page.wait_for_url("**/search**", timeout=15_000)
-
-    with allure.step("Проверить, что страница рабочая и осталась на /search"):
-        assert page.title() != ""
-        assert "/search" in page.url
+    with allure.step("Проверить, что название товара отображается и не пустое"):
+        title = page.locator(PRODUCT_TITLE_SELECTOR)
+        expect(title).to_be_visible(timeout=WAIT_TIMEOUT_MS)
+        assert title.inner_text().strip() != ""

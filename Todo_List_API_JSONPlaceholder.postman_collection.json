@@ -244,7 +244,7 @@
           ]
         },
         {
-          "name": "8. Создание задачи без обязательного поля title",
+          "name": "8. Неподдерживаемый метод: POST на адрес конкретной задачи",
           "request": {
             "method": "POST",
             "header": [
@@ -255,15 +255,16 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"completed\": false,\n  \"userId\": 1\n}"
+              "raw": "{\n  \"title\": \"QA autotest todo\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/todos",
+              "raw": "{{base_url}}/todos/1",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
-                "todos"
+                "todos",
+                "1"
               ]
             }
           },
@@ -273,8 +274,7 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('Статус 201 (мок не валидирует тело)', () => pm.response.to.have.status(201));",
-                  "pm.test('Поле title отсутствует в ответе', () => { const j = pm.response.json(); pm.expect(j).to.not.have.property('title'); });"
+                  "pm.test('Статус 404 (метод не поддерживается для /todos/{id})', () => pm.response.to.have.status(404));"
                 ]
               }
             }

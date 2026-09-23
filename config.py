@@ -19,6 +19,7 @@ import string
 # --- UI: Читай-город ---
 CHITAI_GOROD_BASE_URL = "https://www.chitai-gorod.ru"
 SEARCH_QUERY = "Гарри Поттер"
+AUTHOR_QUERY = "Роулинг"
 
 # --- API: Todo List (JSONPlaceholder — публичный, без авторизации) ---
 TODO_API_BASE_URL = "https://jsonplaceholder.typicode.com"
