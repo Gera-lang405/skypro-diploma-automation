@@ -5,7 +5,15 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "base_url", "value": "https://jsonplaceholder.typicode.com" }
+    {
+      "key": "base_url",
+      "value": "https://jsonplaceholder.typicode.com"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "description": "Не используется: сервис jsonplaceholder.typicode.com публичный и не требует авторизации. Переменная оставлена для единообразия структуры коллекции."
+    }
   ],
   "item": [
     {
@@ -16,7 +24,15 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{base_url}}/todos", "host": ["{{base_url}}"], "path": ["todos"] }
+            "url": {
+              "raw": "{{base_url}}/todos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "todos"
+              ]
+            }
           },
           "event": [
             {
@@ -36,7 +52,16 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{base_url}}/todos/1", "host": ["{{base_url}}"], "path": ["todos", "1"] }
+            "url": {
+              "raw": "{{base_url}}/todos/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "todos",
+                "1"
+              ]
+            }
           },
           "event": [
             {
@@ -55,12 +80,25 @@
           "name": "3. Создание задачи",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"title\": \"QA autotest todo\",\n  \"completed\": false,\n  \"userId\": 1\n}"
             },
-            "url": { "raw": "{{base_url}}/todos", "host": ["{{base_url}}"], "path": ["todos"] }
+            "url": {
+              "raw": "{{base_url}}/todos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "todos"
+              ]
+            }
           },
           "event": [
             {
@@ -69,7 +107,10 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Статус 201', () => pm.response.to.have.status(201));",
-                  "pm.test('title и completed=false в ответе', () => { const j = pm.response.json(); pm.expect(j.title).to.eql('QA autotest todo'); pm.expect(j.completed).to.eql(false); pm.expect(j).to.have.property('id'); });"
+                  "pm.test('title и completed=false в ответе', () => { const j = pm.response.json(); pm.expect(j.title).to.eql('QA autotest todo'); pm.expect(j.completed).to.eql(false); pm.expect(j).to.have.property('id'); });",
+                  "// Сохранение id созданного объекта для последующего использования в коллекции",
+                  "const created = pm.response.json();",
+                  "pm.collectionVariables.set('createdTodoId', created.id);"
                 ]
               }
             }
@@ -79,12 +120,26 @@
           "name": "4. Редактирование задачи",
           "request": {
             "method": "PATCH",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"title\": \"QA autotest todo (обновлено)\"\n}"
             },
-            "url": { "raw": "{{base_url}}/todos/1", "host": ["{{base_url}}"], "path": ["todos", "1"] }
+            "url": {
+              "raw": "{{base_url}}/todos/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "todos",
+                "1"
+              ]
+            }
           },
           "event": [
             {
@@ -104,7 +159,16 @@
           "request": {
             "method": "DELETE",
             "header": [],
-            "url": { "raw": "{{base_url}}/todos/1", "host": ["{{base_url}}"], "path": ["todos", "1"] }
+            "url": {
+              "raw": "{{base_url}}/todos/1",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "todos",
+                "1"
+              ]
+            }
           },
           "event": [
             {
@@ -128,7 +192,16 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{base_url}}/todos/999999", "host": ["{{base_url}}"], "path": ["todos", "999999"] }
+            "url": {
+              "raw": "{{base_url}}/todos/999999",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "todos",
+                "999999"
+              ]
+            }
           },
           "event": [
             {
@@ -147,7 +220,16 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{base_url}}/todos/not-a-number", "host": ["{{base_url}}"], "path": ["todos", "not-a-number"] }
+            "url": {
+              "raw": "{{base_url}}/todos/not-a-number",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "todos",
+                "not-a-number"
+              ]
+            }
           },
           "event": [
             {
@@ -165,12 +247,25 @@
           "name": "8. Создание задачи без обязательного поля title",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "body": {
               "mode": "raw",
               "raw": "{\n  \"completed\": false,\n  \"userId\": 1\n}"
             },
-            "url": { "raw": "{{base_url}}/todos", "host": ["{{base_url}}"], "path": ["todos"] }
+            "url": {
+              "raw": "{{base_url}}/todos",
+              "host": [
+                "{{base_url}}"
+              ],
+              "path": [
+                "todos"
+              ]
+            }
           },
           "event": [
             {

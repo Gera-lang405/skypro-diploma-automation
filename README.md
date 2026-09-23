@@ -2,6 +2,8 @@
 
 Проект автоматизации для дипломной работы по профессии «Инженер по тестированию» (Sky.Pro).
 
+Итоговый отчёт и вся документация по проекту (тест-план, тест-кейсы, чек-лист, баг-репорты, презентация, видеозащита): https://georgi1412qa.yonote.ru/share/5222c94a-8b37-4324-822a-e8b78ffc8325
+
 ## Тестируемые приложения
 
 - **UI:** каталог книжного магазина **Читай-город** — https://www.chitai-gorod.ru (публичный доступ, без логина — поиск, открытие карточки товара).
@@ -23,7 +25,7 @@
 - pytest — тест-раннер
 - requests — API-тесты
 - Playwright — UI-тесты, headless Chromium
-- Allure — отчётность
+- Allure — отчётность (`@allure.title`, `@allure.story`, `allure.step` на всех тестах)
 
 ## Структура проекта
 
@@ -33,6 +35,7 @@ diploma_automation/
 ├── conftest.py                     # фикстуры: api_session (requests), browser/page (Playwright)
 ├── requirements.txt
 ├── pytest.ini
+├── setup.cfg                       # конфигурация flake8
 ├── .gitignore
 ├── tests/
 │   ├── api/
@@ -56,19 +59,30 @@ playwright install chromium
 
 ## Запуск тестов
 
+Проект поддерживает три режима запуска через маркеры pytest:
+
 ```bash
-# все тесты
+# все тесты (13 шт.: 8 API + 5 UI)
 pytest --alluredir=allure-results
 
-# только API
-pytest tests/api -v -m api
-
 # только UI
-pytest tests/ui -v -m ui
+pytest -m "ui" --alluredir=allure-results
+
+# только API
+pytest -m "api" --alluredir=allure-results
 
 # отчёт Allure
-allure serve allure-results
+allure generate allure-results --clean -o allure-report
+allure open allure-report
 ```
+
+## Качество кода
+
+```bash
+flake8 .
+```
+
+Отчёт линтера чистый (0 ошибок, 0 предупреждений; настройки — в `setup.cfg`). Все методы содержат аннотации типов для параметров и возвращаемого значения. Автотесты независимы друг от друга и от порядка запуска, жёсткие ожидания (`time.sleep()`) не используются — только явные ожидания Playwright (`wait_for_selector`, `wait_for_url`, `wait_for_load_state`).
 
 ## Статус проверки
 
@@ -78,8 +92,8 @@ allure serve allure-results
 
 Каждый HTTP-статус и CSS-селектор, использованный в тестах, дополнительно подтверждён вручную живым запросом к реальному сайту/API перед написанием кода.
 
-Postman-коллекция с теми же 8 API-кейсами (5 позитивных + 3 негативных) под новый сервис: [`Todo_List_API_JSONPlaceholder.postman_collection.json`](./Todo_List_API_JSONPlaceholder.postman_collection.json).
+Postman-коллекция с теми же 8 API-кейсами (5 позитивных + 3 негативных) под новый сервис: [`Todo_List_API_JSONPlaceholder.postman_collection.json`](./Todo_List_API_JSONPlaceholder.postman_collection.json). Переменные `base_url` (используется) и `token` (не применяется — сервис без авторизации) вынесены в коллекцию. Для позитивного сценария создания задачи добавлен скрипт сохранения id созданного объекта (`pm.collectionVariables.set`).
 
 ## Найденные дефекты
 
-**BR-001** (Low/Minor): контраст текста ценового бейджа скидки (например «-17%») на главной странице chitai-gorod.ru — 4.04:1 при пороге WCAG 2.1 AA 4.5:1 для обычного текста. Белый текст (#FFFFFF) на фоне #E1426C, 12px/500. Не мешает восприятию визуально, но не проходит формальный критерий доступности.
+**BR-001** (Low/Minor): контраст текста ценового бейджа скидки (например «-17%») на главной странице chitai-gorod.ru — 4.04:1 при пороге WCAG 2.1 AA 4.5:1 для обычного текста. Белый текст (#FFFFFF) на фоне #E1426C, 12px/500. Не мешает восприятию визуально, но не проходит формальный критерий доступности. Полное описание — в тест-кейсах/чек-листе по ссылке выше.
