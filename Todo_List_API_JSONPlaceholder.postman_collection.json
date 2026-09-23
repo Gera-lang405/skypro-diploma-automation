@@ -1,0 +1,191 @@
+{
+  "info": {
+    "name": "Todo List API — JSONPlaceholder (Дипломная работа)",
+    "description": "Коллекция для дипломной работы Селиванова Георгия. Сервер из исходного тест-плана (http://5.101.50.9:8015) перестал отвечать по сети 23.09.2026, поэтому API-тесты переведены на публичный сервис с идентичной семантикой Todo-ресурса — https://jsonplaceholder.typicode.com/todos (без авторизации). Структура тест-кейсов сохранена: 5 позитивных + 3 негативных. Каждый запрос содержит проверки в разделе Tests, соответствующие автотестам в репозитории https://github.com/Gera-lang405/skypro-diploma-automation.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "https://jsonplaceholder.typicode.com" }
+  ],
+  "item": [
+    {
+      "name": "Позитивные",
+      "item": [
+        {
+          "name": "1. Получение списка задач",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/todos", "host": ["{{base_url}}"], "path": ["todos"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Статус 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Тело — непустой массив', () => { const j = pm.response.json(); pm.expect(Array.isArray(j)).to.be.true; pm.expect(j.length).to.be.above(0); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "2. Получение одной задачи",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/todos/1", "host": ["{{base_url}}"], "path": ["todos", "1"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Статус 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Есть поля userId/id/title/completed', () => { const j = pm.response.json(); pm.expect(j).to.include.all.keys('userId','id','title','completed'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "3. Создание задачи",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"QA autotest todo\",\n  \"completed\": false,\n  \"userId\": 1\n}"
+            },
+            "url": { "raw": "{{base_url}}/todos", "host": ["{{base_url}}"], "path": ["todos"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Статус 201', () => pm.response.to.have.status(201));",
+                  "pm.test('title и completed=false в ответе', () => { const j = pm.response.json(); pm.expect(j.title).to.eql('QA autotest todo'); pm.expect(j.completed).to.eql(false); pm.expect(j).to.have.property('id'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "4. Редактирование задачи",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"QA autotest todo (обновлено)\"\n}"
+            },
+            "url": { "raw": "{{base_url}}/todos/1", "host": ["{{base_url}}"], "path": ["todos", "1"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Статус 200', () => pm.response.to.have.status(200));",
+                  "pm.test('title обновлён в ответе', () => { const j = pm.response.json(); pm.expect(j.title).to.eql('QA autotest todo (обновлено)'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "5. Удаление задачи",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": { "raw": "{{base_url}}/todos/1", "host": ["{{base_url}}"], "path": ["todos", "1"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Статус 200 или 204', () => pm.expect([200,204]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Негативные",
+      "item": [
+        {
+          "name": "6. Получение несуществующей задачи",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/todos/999999", "host": ["{{base_url}}"], "path": ["todos", "999999"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Статус 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "7. Задача с нечисловым id",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{base_url}}/todos/not-a-number", "host": ["{{base_url}}"], "path": ["todos", "not-a-number"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Статус 404 (не 500)', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "8. Создание задачи без обязательного поля title",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"completed\": false,\n  \"userId\": 1\n}"
+            },
+            "url": { "raw": "{{base_url}}/todos", "host": ["{{base_url}}"], "path": ["todos"] }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Статус 201 (мок не валидирует тело)', () => pm.response.to.have.status(201));",
+                  "pm.test('Поле title отсутствует в ответе', () => { const j = pm.response.json(); pm.expect(j).to.not.have.property('title'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
