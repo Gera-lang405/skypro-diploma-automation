@@ -8,6 +8,12 @@ UI-тест-кейсы: поиск и просмотр книги на chitai-go
 (см. README): поле поиска — input[name="phrase"] (не имеет
 предсказуемого текста, только это стабильное имя), карточки товаров в
 выдаче — ссылки вида a[href*="/product/"].
+
+Важно: сайт постоянно шлёт фоновые запросы (аналитика, рекомендации),
+поэтому состояние "networkidle" никогда не наступает и вызывает ложные
+таймауты (подтверждено живым прогоном). Вместо ожидания "тишины в сети"
+тесты явно ждут появления нужного элемента через wait_for_selector —
+это то, что реально имеет значение для проверки.
 """
 from playwright.sync_api import Page
 
@@ -26,7 +32,7 @@ def test_search_returns_results(page: Page) -> None:
     search_box = page.locator(SEARCH_INPUT_SELECTOR)
     search_box.fill(SEARCH_QUERY)
     search_box.press("Enter")
-    page.wait_for_load_state("networkidle")
+    page.wait_for_selector(PRODUCT_CARD_SELECTOR, timeout=15_000)
 
     results = page.locator(PRODUCT_CARD_SELECTOR)
     assert results.count() > 0, "Поиск не вернул ни одного товара"
@@ -39,7 +45,7 @@ def test_search_results_contain_query_relevance(page: Page) -> None:
     search_box = page.locator(SEARCH_INPUT_SELECTOR)
     search_box.fill(SEARCH_QUERY)
     search_box.press("Enter")
-    page.wait_for_load_state("networkidle")
+    page.wait_for_selector(PRODUCT_CARD_SELECTOR, timeout=15_000)
 
     first_result = page.locator(PRODUCT_CARD_SELECTOR).first
     assert first_result.is_visible()
@@ -52,11 +58,11 @@ def test_open_product_card(page: Page) -> None:
     search_box = page.locator(SEARCH_INPUT_SELECTOR)
     search_box.fill(SEARCH_QUERY)
     search_box.press("Enter")
-    page.wait_for_load_state("networkidle")
+    page.wait_for_selector(PRODUCT_CARD_SELECTOR, timeout=15_000)
 
     first_product = page.locator(PRODUCT_CARD_SELECTOR).first
     first_product.click()
-    page.wait_for_load_state("networkidle")
+    page.wait_for_url("**/product/**", timeout=15_000)
 
     assert "/product/" in page.url
 
@@ -68,7 +74,7 @@ def test_empty_search_query_does_not_crash(page: Page) -> None:
     search_box = page.locator(SEARCH_INPUT_SELECTOR)
     search_box.fill("")
     search_box.press("Enter")
-    page.wait_for_load_state("networkidle")
+    page.wait_for_load_state("domcontentloaded")
 
     assert page.title() != ""
 
@@ -87,7 +93,7 @@ def test_nonexistent_query_does_not_error(page: Page) -> None:
     search_box = page.locator(SEARCH_INPUT_SELECTOR)
     search_box.fill("ъъъфываолдж12345несуществующийтовар")
     search_box.press("Enter")
-    page.wait_for_load_state("networkidle")
+    page.wait_for_url("**/search**", timeout=15_000)
 
     assert page.title() != ""
     assert "/search" in page.url
