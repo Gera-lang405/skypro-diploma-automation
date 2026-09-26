@@ -1,5 +1,5 @@
 """
-Общие фикстуры для API- (Todo List) и UI- (Читай-город) тестов.
+Общие фикстуры для API- и UI-тестов Читай-города.
 """
 from typing import Generator
 
@@ -7,24 +7,30 @@ import pytest
 import requests
 from playwright.sync_api import Browser, BrowserContext, Page, Playwright, sync_playwright
 
-from config import CHITAI_GOROD_BASE_URL, HEADLESS, TODO_API_BASE_URL
+from config import CHITAI_GOROD_API_URL, CHITAI_GOROD_BASE_URL, HEADLESS, REQUEST_TIMEOUT_S
 
 
 # --------------------------------------------------------------------------
-# API (Todo List / JSONPlaceholder) фикстуры — авторизация не требуется
+# API Читай-города: анонимный токен и сессия с заголовком Authorization
 # --------------------------------------------------------------------------
 
 
 @pytest.fixture(scope="session")
-def api_base_url() -> str:
-    return TODO_API_BASE_URL
+def api_token() -> str:
+    """Анонимный Bearer-токен: сервис выдаёт его без логина и пароля."""
+    response = requests.post(
+        f"{CHITAI_GOROD_API_URL}/v1/auth/anonymous", json={}, timeout=REQUEST_TIMEOUT_S
+    )
+    response.raise_for_status()
+    token: str = response.json()["token"]["accessToken"]
+    return token
 
 
 @pytest.fixture(scope="session")
-def api_session() -> Generator[requests.Session, None, None]:
-    """requests.Session с общим Content-Type для всех API-тестов."""
+def api_session(api_token: str) -> Generator[requests.Session, None, None]:
+    """requests.Session с токеном в заголовке Authorization для всех API-тестов."""
     session = requests.Session()
-    session.headers.update({"Content-Type": "application/json"})
+    session.headers.update({"Authorization": api_token, "Accept": "application/json"})
     yield session
     session.close()
 
